@@ -14,6 +14,11 @@
             <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
             <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
         </Style>
+        <Style TargetType="InkToolbarCustomToolButton" x:Key="ShareButtonStyle">
+            <Setter Property="Content" Value=""/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="ToolTipService.ToolTip" Value="Share"/>
+        </Style>
     </Page.Resources>
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <ScrollViewer Style="{StaticResource ZoomableScrollViewer}">
@@ -23,7 +28,7 @@
             </Grid>
         </ScrollViewer>
         <InkToolbar TargetInkCanvas="{x:Bind InkCanvas}" VerticalAlignment="Top" x:Name="InkToolbar">
-            <InkToolbarCustomToolButton Content="" FontFamily="Segoe MDL2 Assets" Click="OnShare" ToolTipService.ToolTip="Share"/>
+            <InkToolbarCustomToolButton Style="{StaticResource ShareButtonStyle}" Click="OnShare" />
         </InkToolbar>
     </Grid>
 </Page>

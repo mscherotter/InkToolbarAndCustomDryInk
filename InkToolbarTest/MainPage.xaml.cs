@@ -27,13 +27,13 @@ namespace InkToolbarTest
     public sealed partial class MainPage : Page
     {
         private readonly List<InkStrokeContainer> _strokes = new List<InkStrokeContainer>();
+        private Flyout _eraseAllFlyout;
 
         private InkSynchronizer _inkSynchronizer;
 
         private bool _isErasing;
 
         private Point _lastPoint;
-        private Flyout _eraseAllFlyout;
 
         public MainPage()
         {
@@ -46,6 +46,7 @@ namespace InkToolbarTest
         {
             base.OnNavigatedTo(e);
 
+            // Enable sharing
             DataTransferManager.GetForCurrentView().DataRequested += MainPage_DataRequested;
         }
 
@@ -53,6 +54,7 @@ namespace InkToolbarTest
         {
             base.OnNavigatedFrom(e);
 
+            // Disable sharing
             DataTransferManager.GetForCurrentView().DataRequested -= MainPage_DataRequested;
         }
 
@@ -87,22 +89,24 @@ namespace InkToolbarTest
 
                 await offscreen.SaveAsync(stream, CanvasBitmapFileFormat.Bmp);
 
-                var file =
-                    await
-                        ApplicationData.Current.TemporaryFolder.CreateFileAsync("ink.png",
-                            CreationCollisionOption.GenerateUniqueName);
+                // 1. Share as a bitmap
+                dataPackage.SetBitmap(RandomAccessStreamReference.CreateFromStream(stream));
+
+                var file = await ApplicationData.Current.TemporaryFolder.CreateFileAsync(
+                    "ink.png",
+                    CreationCollisionOption.GenerateUniqueName);
 
                 using (var fileStream = await file.OpenAsync(FileAccessMode.ReadWrite))
                 {
                     await offscreen.SaveAsync(fileStream, CanvasBitmapFileFormat.Png);
                 }
 
-                dataPackage.SetBitmap(RandomAccessStreamReference.CreateFromStream(stream));
-
+                // 2. Share as a file
                 dataPackage.SetStorageItems(new[] {file});
 
                 var thumbnail = await file.GetThumbnailAsync(ThumbnailMode.SingleItem);
 
+                // 3. Share the thumbnail
                 dataPackage.Properties.Thumbnail = RandomAccessStreamReference.CreateFromStream(thumbnail);
             }
         }
@@ -306,16 +310,13 @@ namespace InkToolbarTest
         {
             var activeTool = InkToolbar.ActiveTool;
 
+            // Show the share UI
             DataTransferManager.ShowShareUI();
 
-            var button = sender as RadioButton;
+            await Task.Delay(TimeSpan.FromSeconds(0.1));
 
-            if (button != null)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(0.1));
-
-                InkToolbar.ActiveTool = activeTool;
-            }
+            // reset the active tool after pressing the share button
+            InkToolbar.ActiveTool = activeTool;
         }
     }
 }
