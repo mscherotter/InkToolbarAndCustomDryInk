@@ -33,6 +33,7 @@ namespace InkToolbarTest
         private bool _isErasing;
 
         private Point _lastPoint;
+        private Flyout _eraseAllFlyout;
 
         public MainPage()
         {
@@ -51,6 +52,7 @@ namespace InkToolbarTest
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             base.OnNavigatedFrom(e);
+
             DataTransferManager.GetForCurrentView().DataRequested -= MainPage_DataRequested;
         }
 
@@ -122,11 +124,11 @@ namespace InkToolbarTest
                 eraser.Unchecked += Eraser_Unchecked;
             }
 
-            var flyout = FlyoutBase.GetAttachedFlyout(eraser) as Flyout;
+            _eraseAllFlyout = FlyoutBase.GetAttachedFlyout(eraser) as Flyout;
 
-            if (flyout != null)
+            if (_eraseAllFlyout != null)
             {
-                var button = flyout.Content as Button;
+                var button = _eraseAllFlyout.Content as Button;
 
                 if (button != null)
                 {
@@ -135,7 +137,7 @@ namespace InkToolbarTest
                     newButton.Content = button.Content;
 
                     newButton.Click += EraseAllInk;
-                    flyout.Content = newButton;
+                    _eraseAllFlyout.Content = newButton;
                 }
             }
         }
@@ -145,6 +147,8 @@ namespace InkToolbarTest
             _strokes.Clear();
 
             DrawingCanvas.Invalidate();
+
+            _eraseAllFlyout.Hide();
         }
 
         private void Eraser_Checked(object sender, RoutedEventArgs e)

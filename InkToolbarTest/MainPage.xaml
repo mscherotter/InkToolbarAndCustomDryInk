@@ -6,9 +6,22 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
+    <Page.Resources>
+        <Style TargetType="ScrollViewer" x:Key="ZoomableScrollViewer">
+            <Setter Property="ZoomMode" Value="Enabled"/>
+            <Setter Property="HorizontalScrollMode" Value="Enabled"/>
+            <Setter Property="VerticalScrollMode" Value="Enabled"/>
+            <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+        </Style>
+    </Page.Resources>
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <canvas:CanvasControl Draw="DrawCanvas" ClearColor="Beige" x:Name="DrawingCanvas"/>
-        <InkCanvas x:Name="InkCanvas"/>
+        <ScrollViewer Style="{StaticResource ZoomableScrollViewer}">
+            <Grid Width="3000" Height="2000">
+                <canvas:CanvasControl Draw="DrawCanvas" ClearColor="Beige" x:Name="DrawingCanvas"/>
+                <InkCanvas x:Name="InkCanvas"/>
+            </Grid>
+        </ScrollViewer>
         <InkToolbar TargetInkCanvas="{x:Bind InkCanvas}" VerticalAlignment="Top" x:Name="InkToolbar">
             <InkToolbarCustomToolButton Content="" FontFamily="Segoe MDL2 Assets" Click="OnShare" ToolTipService.ToolTip="Share"/>
         </InkToolbar>
