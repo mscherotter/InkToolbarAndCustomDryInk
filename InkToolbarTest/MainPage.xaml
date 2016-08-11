@@ -9,6 +9,8 @@
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <canvas:CanvasControl Draw="DrawCanvas" ClearColor="Beige" x:Name="DrawingCanvas"/>
         <InkCanvas x:Name="InkCanvas"/>
-        <InkToolbar TargetInkCanvas="{x:Bind InkCanvas}" VerticalAlignment="Top" x:Name="InkToolbar"/>
+        <InkToolbar TargetInkCanvas="{x:Bind InkCanvas}" VerticalAlignment="Top" x:Name="InkToolbar">
+            <InkToolbarCustomToolButton Content="" FontFamily="Segoe MDL2 Assets" Click="OnShare" ToolTipService.ToolTip="Share"/>
+        </InkToolbar>
     </Grid>
 </Page>

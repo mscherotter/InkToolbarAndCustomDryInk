@@ -1,13 +1,20 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading.Tasks;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
+using Windows.Storage;
+using Windows.Storage.FileProperties;
+using Windows.Storage.Streams;
 using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Input.Inking;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
+using Windows.UI.Xaml.Navigation;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Effects;
 using Microsoft.Graphics.Canvas.UI.Xaml;
@@ -19,10 +26,13 @@ namespace InkToolbarTest
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        private InkSynchronizer _inkSynchronizer;
-        private bool _isErasing;
-        private Point _lastPoint;
         private readonly List<InkStrokeContainer> _strokes = new List<InkStrokeContainer>();
+
+        private InkSynchronizer _inkSynchronizer;
+
+        private bool _isErasing;
+
+        private Point _lastPoint;
 
         public MainPage()
         {
@@ -31,6 +41,69 @@ namespace InkToolbarTest
             Loaded += MainPage_Loaded;
         }
 
+        protected override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            base.OnNavigatedTo(e);
+
+            DataTransferManager.GetForCurrentView().DataRequested += MainPage_DataRequested;
+        }
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+            DataTransferManager.GetForCurrentView().DataRequested -= MainPage_DataRequested;
+        }
+
+        private async void MainPage_DataRequested(DataTransferManager sender, DataRequestedEventArgs args)
+        {
+            var deferral = args.Request.GetDeferral();
+
+            args.Request.Data.Properties.Title = "Ink";
+            args.Request.Data.Properties.Description = "Ink image";
+
+            await GetBitmapAsync(args.Request.Data);
+
+            deferral.Complete();
+        }
+
+        private async Task GetBitmapAsync(DataPackage dataPackage)
+        {
+            var device = CanvasDevice.GetSharedDevice();
+
+            using (var offscreen = new CanvasRenderTarget(
+                device,
+                Convert.ToSingle(DrawingCanvas.ActualWidth),
+                Convert.ToSingle(DrawingCanvas.ActualHeight),
+                96))
+            {
+                using (var session = offscreen.CreateDrawingSession())
+                {
+                    DrawInk(session);
+                }
+
+                var stream = new InMemoryRandomAccessStream();
+
+                await offscreen.SaveAsync(stream, CanvasBitmapFileFormat.Bmp);
+
+                var file =
+                    await
+                        ApplicationData.Current.TemporaryFolder.CreateFileAsync("ink.png",
+                            CreationCollisionOption.GenerateUniqueName);
+
+                using (var fileStream = await file.OpenAsync(FileAccessMode.ReadWrite))
+                {
+                    await offscreen.SaveAsync(fileStream, CanvasBitmapFileFormat.Png);
+                }
+
+                dataPackage.SetBitmap(RandomAccessStreamReference.CreateFromStream(stream));
+
+                dataPackage.SetStorageItems(new[] {file});
+
+                var thumbnail = await file.GetThumbnailAsync(ThumbnailMode.SingleItem);
+
+                dataPackage.Properties.Thumbnail = RandomAccessStreamReference.CreateFromStream(thumbnail);
+            }
+        }
 
         private void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
@@ -118,7 +191,7 @@ namespace InkToolbarTest
                     continue;
                 }
 
-                if (rect.Width * rect.Height > 0)
+                if (rect.Width*rect.Height > 0)
                 {
                     _strokes.Remove(item);
 
@@ -198,6 +271,8 @@ namespace InkToolbarTest
 
         private void DrawInk(CanvasDrawingSession session)
         {
+            session.Clear(DrawingCanvas.ClearColor);
+
             foreach (var item in _strokes)
             {
                 var strokes = item.GetStrokes();
@@ -220,6 +295,22 @@ namespace InkToolbarTest
                 }
 
                 session.DrawInk(strokes);
+            }
+        }
+
+        private async void OnShare(object sender, RoutedEventArgs e)
+        {
+            var activeTool = InkToolbar.ActiveTool;
+
+            DataTransferManager.ShowShareUI();
+
+            var button = sender as RadioButton;
+
+            if (button != null)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(0.1));
+
+                InkToolbar.ActiveTool = activeTool;
             }
         }
     }
