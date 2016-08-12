@@ -19,12 +19,32 @@
             <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
             <Setter Property="ToolTipService.ToolTip" Value="Share"/>
         </Style>
+        <Style TargetType="Border" x:Key="OrthoButtonBorderStyle">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="8"/>
+        </Style>
+        <Style x:Key="OrthoButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Margin" Value="8"/>
+            <Setter Property="VerticalAlignment" Value="Bottom"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="24"/>
+            <Setter Property="Content" Value=""/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+            <Setter Property="Width" Value="60"/>
+            <Setter Property="Height" Value="60"/>
+        </Style>
     </Page.Resources>
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" x:Name="ContentRoot">
         <ScrollViewer Style="{StaticResource ZoomableScrollViewer}">
             <Grid Width="3000" Height="2000">
                 <canvas:CanvasControl Draw="DrawCanvas" ClearColor="Beige" x:Name="DrawingCanvas"/>
                 <InkCanvas x:Name="InkCanvas"/>
+                <StackPanel x:Name="ModifierButtons" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <Border PointerPressed="OnOrthoMode" PointerReleased="OnFreeMode" Background="Transparent">
+                        <ToggleButton x:Name="OrthoButton" Style="{StaticResource OrthoButtonStyle}" IsHitTestVisible="False"/>
+                    </Border>
+                </StackPanel>
             </Grid>
         </ScrollViewer>
         <InkToolbar TargetInkCanvas="{x:Bind InkCanvas}" VerticalAlignment="Top" x:Name="InkToolbar">

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Devices.Input;
 using Windows.Foundation;
 using Windows.Storage;
 using Windows.Storage.FileProperties;
@@ -11,9 +12,12 @@ using Windows.Storage.Streams;
 using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Input.Inking;
+using Windows.UI.Input.Inking.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
+using Windows.UI.Xaml.Input;
+using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Effects;
@@ -28,18 +32,42 @@ namespace InkToolbarTest
     {
         private readonly List<InkStrokeContainer> _strokes = new List<InkStrokeContainer>();
         private Flyout _eraseAllFlyout;
+        private bool _isOrthoMode;
 
         private InkSynchronizer _inkSynchronizer;
 
         private bool _isErasing;
 
         private Point _lastPoint;
+        private CoreWetStrokeUpdateSource _orthoSource;
+        private Rect _buttonRect;
 
         public MainPage()
         {
             InitializeComponent();
 
             Loaded += MainPage_Loaded;
+
+            SizeChanged += MainPage_SizeChanged;
+        }
+
+        private void MainPage_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            UpdateButtonRect();
+        }
+
+        private void UpdateButtonRect()
+        {
+            ModifierButtons.RenderTransform = new TranslateTransform
+            {
+                X = ContentRoot.ActualWidth - ModifierButtons.ActualWidth - 24,
+                Y = ContentRoot.ActualHeight - ModifierButtons.ActualHeight - 24
+            };
+
+            GeneralTransform buttonTransform = OrthoButton.TransformToVisual(null);
+            Point point = buttonTransform.TransformPoint(new Point());
+
+            _buttonRect = new Rect(point, new Size(OrthoButton.ActualWidth, OrthoButton.ActualHeight));
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -144,6 +172,9 @@ namespace InkToolbarTest
                     _eraseAllFlyout.Content = newButton;
                 }
             }
+
+            ConfigureOrthoMode();
+            UpdateButtonRect();
         }
 
         private void EraseAllInk(object sender, RoutedEventArgs e)
@@ -317,6 +348,151 @@ namespace InkToolbarTest
 
             // reset the active tool after pressing the share button
             InkToolbar.ActiveTool = activeTool;
+        }
+
+        private void OnOrthoMode(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            e.Handled = true;
+            SetOrthoMode(true);
+        }
+
+        private void ConfigureOrthoMode()
+        {
+            _orthoSource = CoreWetStrokeUpdateSource.Create(InkCanvas.InkPresenter);
+            _orthoSource.WetStrokeStarting += _orthoSource_WetStrokeStarting;
+            _orthoSource.WetStrokeContinuing += _orthoSource_WetStrokeContinuing;
+            _orthoSource.WetStrokeCompleted += _orthoSource_WetStrokeCompleted;
+            _orthoSource.WetStrokeStopping += _orthoSource_WetStrokeStopping;
+
+            var touchSource = CoreInkIndependentInputSource.Create(InkCanvas.InkPresenter);
+            InkCanvas.InkPresenter.InputDeviceTypes = CoreInputDeviceTypes.Touch | CoreInputDeviceTypes.Pen;
+
+            touchSource.PointerPressing += TouchSource_PointerPressing;
+            touchSource.PointerMoving += TouchSource_PointerMoving;
+            touchSource.PointerReleasing += TouchSource_PointerReleasing;
+        }
+
+        private void TouchSource_PointerMoving(CoreInkIndependentInputSource sender, PointerEventArgs args)
+        {
+            if (args.CurrentPoint.PointerDevice.PointerDeviceType == PointerDeviceType.Touch)
+            {
+                args.Handled = true;
+            }
+        }
+
+        private void TouchSource_PointerReleasing(CoreInkIndependentInputSource sender, PointerEventArgs args)
+        {
+            if (args.CurrentPoint.PointerDevice.PointerDeviceType == PointerDeviceType.Touch)
+            {
+                if (_buttonRect.Contains(args.CurrentPoint.Position))
+                {
+                    SetOrthoMode(false);
+                    args.Handled = true;
+                }
+            }
+        }
+
+        private void TouchSource_PointerPressing(CoreInkIndependentInputSource sender, PointerEventArgs args)
+        {
+            System.Diagnostics.Debug.WriteLine("Pointer Pressing");
+            if (args.CurrentPoint.PointerDevice.PointerDeviceType == PointerDeviceType.Touch)
+            {
+                if (_buttonRect.Contains(args.CurrentPoint.Position))
+                {
+                    SetOrthoMode(true);
+                    args.Handled = true;
+                }
+            }
+        }
+
+        private async void SetOrthoMode(bool isOrtho)
+        {
+            System.Diagnostics.Debug.WriteLine("Ortho Mode: {0}", isOrtho);
+
+            _isOrthoMode = isOrtho;
+
+            await OrthoButton.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, delegate {
+                OrthoButton.IsChecked = isOrtho;
+            });
+        }
+
+        private void _orthoSource_WetStrokeStopping(CoreWetStrokeUpdateSource sender, CoreWetStrokeUpdateEventArgs args)
+        {
+        }
+
+        private void _orthoSource_WetStrokeCompleted(CoreWetStrokeUpdateSource sender, CoreWetStrokeUpdateEventArgs args)
+        {
+            args.Disposition = CoreWetStrokeDisposition.Completed;
+            ;
+        }
+
+        private void _orthoSource_WetStrokeContinuing(CoreWetStrokeUpdateSource sender, CoreWetStrokeUpdateEventArgs args)
+        {
+            if (_isOrthoMode)
+            {
+                var thisPoint = args.NewInkPoints.Last();
+
+                args.NewInkPoints.Clear();
+
+                if (Math.Abs(thisPoint.Position.X - _lastPoint.X) > Math.Abs(thisPoint.Position.Y - _lastPoint.Y))
+                {
+                    args.NewInkPoints.Add(new InkPoint(new Point(thisPoint.Position.X, _lastPoint.Y), thisPoint.Pressure));
+                }
+                else
+                {
+                    args.NewInkPoints.Add(new InkPoint(new Point(_lastPoint.X, thisPoint.Position.Y), thisPoint.Pressure));
+                }
+
+
+                args.Disposition = CoreWetStrokeDisposition.Inking;
+            }
+            else
+            {
+                args.Disposition = CoreWetStrokeDisposition.Inking;
+
+                _lastPoint = args.NewInkPoints.Last().Position;
+            }
+        }
+
+        private void _orthoSource_WetStrokeStarting(CoreWetStrokeUpdateSource sender, CoreWetStrokeUpdateEventArgs args)
+        {
+            if (_isOrthoMode)
+            {
+                args.Disposition = CoreWetStrokeDisposition.Inking;
+            }
+            else
+            {
+                args.Disposition = CoreWetStrokeDisposition.Inking;
+            }
+
+            _lastPoint = args.NewInkPoints.Last().Position;
+        }
+
+
+        private void OnFreeMode(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            SetOrthoMode(false);
+            e.Handled = true;
+
+        }
+
+        private void UIElement_OnPointerCanceled(object sender, PointerRoutedEventArgs e)
+        {
+            SetOrthoMode(false);
+
+            e.Handled = true;
+        }
+
+        private void UIElement_OnPointerExited(object sender, PointerRoutedEventArgs e)
+        {
+            SetOrthoMode(false);
+            e.Handled = true;
+        }
+
+        private void UIElement_OnPointerCaptureLost(object sender, PointerRoutedEventArgs e)
+        {
+            SetOrthoMode(false);
+            e.Handled = true;
         }
     }
 }
