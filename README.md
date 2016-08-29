@@ -7,3 +7,4 @@ Windows UWP Sample that demonstrate how to use the InkToolbar Control with a cus
 - Adding a custom button to the InkToolbar
 - Rendering Win2D to be used in a Share contract
 - Simultaneous pen and touch with the ScrollViewer control
+- Fixed zooming so that the rendering isn't pixelated when zoomed in.

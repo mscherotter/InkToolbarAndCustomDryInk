@@ -13,6 +13,9 @@
             <Setter Property="VerticalScrollMode" Value="Enabled"/>
             <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
             <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+            <!-- The CanvasControl renders to a bitmap with a maximum size of 16384 pixels per size - 
+                for more zooming capabilities, use the CanvasVirtualControl -->
+            <Setter Property="MaxZoomFactor" Value="5.4613"/>
         </Style>
         <Style TargetType="InkToolbarCustomToolButton" x:Key="ShareButtonStyle">
             <Setter Property="Content" Value=""/>
@@ -29,8 +32,8 @@
         </Style>
     </Page.Resources>
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" x:Name="ContentRoot">
-        <ScrollViewer Style="{StaticResource ZoomableScrollViewer}">
-            <Grid Style="{StaticResource CanvasContainerStyle}">
+        <ScrollViewer x:Name="ScrollViewer" Style="{StaticResource ZoomableScrollViewer}" ViewChanged="OnScrollViewerViewChanged">
+            <Grid Style="{StaticResource CanvasContainerStyle}" x:Name="CanvasContainer">
                 <canvas:CanvasControl Draw="DrawCanvas" ClearColor="Beige" x:Name="DrawingCanvas"/>
                 <InkCanvas x:Name="InkCanvas"/>
             </Grid>

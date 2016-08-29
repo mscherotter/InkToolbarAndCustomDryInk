@@ -3,25 +3,22 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
+using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.Effects;
+using Microsoft.Graphics.Canvas.UI.Xaml;
 using Windows.ApplicationModel.DataTransfer;
-using Windows.Devices.Input;
 using Windows.Foundation;
+using Windows.Graphics.Display;
 using Windows.Storage;
 using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
 using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Input.Inking;
-using Windows.UI.Input.Inking.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
-using Microsoft.Graphics.Canvas;
-using Microsoft.Graphics.Canvas.Effects;
-using Microsoft.Graphics.Canvas.UI.Xaml;
 
 namespace InkToolbarTest
 {
@@ -30,6 +27,11 @@ namespace InkToolbarTest
     /// </summary>
     public sealed partial class MainPage : Page
     {
+        /// <summary>
+        /// This is the maximum Bitmap render size for Win2D
+        /// </summary>
+        const int MaxImageSize = 16384;
+
         #region Fields
         private readonly List<InkStrokeContainer> _strokes = new List<InkStrokeContainer>();
 
@@ -40,6 +42,8 @@ namespace InkToolbarTest
         private bool _isErasing;
 
         private Point _lastPoint;
+
+        private float displayDpi;
         #endregion
 
         #region Constructors
@@ -127,6 +131,15 @@ namespace InkToolbarTest
 
         private void MainPage_Loaded(object sender, RoutedEventArgs e)
         {
+            var display = DisplayInformation.GetForCurrentView();
+
+            display.DpiChanged += Display_DpiChanged;
+
+            Display_DpiChanged(display, null);
+
+            var maxSize = Math.Max(CanvasContainer.Width, CanvasContainer.Height);
+            ScrollViewer.MaxZoomFactor = MaxImageSize / System.Convert.ToSingle(maxSize);
+
             // 1. Activate custom drawing 
             _inkSynchronizer = InkCanvas.InkPresenter.ActivateCustomDrying();
 
@@ -158,6 +171,21 @@ namespace InkToolbarTest
                     _eraseAllFlyout.Content = newButton;
                 }
             }
+        }
+
+        /// <summary>
+        /// Update the Scroll Viewer when the DPI changes
+        /// </summary>
+        /// <param name="sender">the display information</param>
+        /// <param name="args">the arguments</param>
+        /// <remarks>Adapted from Win2D Gallery Mandelbrot sample at
+        /// <![CDATA[https://github.com/Microsoft/Win2D/blob/master/samples/ExampleGallery/Shared/Mandelbrot.xaml.cs]]>
+        /// </remarks>
+        private void Display_DpiChanged(DisplayInformation sender, object args)
+        {
+            displayDpi = sender.LogicalDpi;
+
+            OnScrollViewerViewChanged(null, null);
         }
 
         private void EraseAllInk(object sender, RoutedEventArgs e)
@@ -331,6 +359,40 @@ namespace InkToolbarTest
 
             // reset the active tool after pressing the share button
             InkToolbar.ActiveTool = activeTool;
+        }
+
+        /// <summary>
+        /// When the ScrollViewer zooms in or out, we update DpiScale on our CanvasVirtualControl
+        /// to match. This adjusts its pixel density to match the current zoom level. But its size
+        /// in dips stays the same, so layout and scroll position are not affected by the zoom.        
+        /// /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        /// <remarks>Adapted from Win2D Gallery Mandelbrot sample at
+        /// <![CDATA[https://github.com/Microsoft/Win2D/blob/master/samples/ExampleGallery/Shared/Mandelbrot.xaml.cs]]>
+        /// </remarks>
+        private void OnScrollViewerViewChanged(object sender, ScrollViewerViewChangedEventArgs e)
+        {
+            // Cancel out the display DPI, so our fractal always renders at 96 DPI regardless of display
+            // configuration. This boosts performance on high DPI displays, at the cost of visual quality.
+            // For even better performance (but lower quality) this value could be further reduced.
+            float dpiAdjustment = 96 / displayDpi;
+
+            // Adjust DPI to match the current zoom level.
+            float dpiScale = dpiAdjustment * ScrollViewer.ZoomFactor;
+
+            // To boost performance during pinch-zoom manipulations, we only update DPI when it has
+            // changed by more than 20%, or at the end of the zoom (when e.IsIntermediate reports false).
+            // Smaller changes will just scale the existing bitmap, which is much faster than recomputing
+            // the fractal at a different resolution. To trade off between zooming perf vs. smoothness,
+            // adjust the thresholds used in this ratio comparison.
+
+            var ratio = DrawingCanvas.DpiScale / dpiScale;
+
+            if (e == null || !e.IsIntermediate || ratio <= 0.8 || ratio >= 1.25)
+            {
+                DrawingCanvas.DpiScale = dpiScale;
+            }
         }
         #endregion
     }
