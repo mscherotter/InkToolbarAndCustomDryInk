@@ -1,5 +1,6 @@
 # InkToolbar and Custom Dry Ink
 Windows UWP Sample that demonstrate how to use the InkToolbar Control with a custom Dry Ink CanvasControl
+
 See [this article](https://blogs.msdn.microsoft.com/synergist/2016/08/26/using-the-inktoolbar-with-custom-dry-ink-in-windows-anniversary-edition/) 
 for a full explanation.
 ## Features Demonstrated
