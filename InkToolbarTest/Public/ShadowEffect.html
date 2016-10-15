@@ -1,0 +1,52 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>Shadow Effect</title>
+    <link type="text/css" href="Style.css" rel="stylesheet" />
+    <link type="text/css" href="Journalist/Style.css" rel="stylesheet" />
+    <script type="text/javascript">
+        function getData() {
+            var data = {
+                color: document.getElementById("ColorInput").value,
+                xOffset: document.getElementById("XOffsetInput").value,
+                yOffset: document.getElementById("YOffsetInput").value,
+                blurAmount: doucment.getElementById("BlurInput").value
+            };
+
+            return JSON.stringify(data);
+        }
+        function setData(dataString) {
+            if (dataString) {
+                var data = JSON.parse(dataString);
+
+                document.getElementById("ColorInput").value = data.color;
+                document.getElementById("BlurInput").value = data.blurAmount;
+                document.getElementById("XOffsetInput").value = data.xOffset;
+                document.getElementById("YOffsetInput").value = data.yOffset;
+            }
+        }
+    </script>
+</head>
+<body>
+    <form>
+        <p>
+            <label for="ColorInput">Shadow color</label>
+            <input id="ColorInput" type="color"/>
+        </p>
+        <p>
+            <div>Offset</div>
+            <label for="XOffsetInput">X</label>
+            <input id="XOffsetInput" type="number" value="2"/>
+            <br/>
+            <label for="YOffsetInput">Y</label>
+            <input id="YOffsetInput" type="number" value="2"/>
+        </p>
+        <p>
+            <label for="BlurInput">Blur amount</label>
+            <input id="BlurAmount" type="number" value="3"/>
+        </p>
+    </form>
+</body>
+</html>

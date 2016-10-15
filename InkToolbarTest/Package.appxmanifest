@@ -1,48 +1,42 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-
-<Package
-  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
-  xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
-  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-  IgnorableNamespaces="uap mp">
-
-  <Identity
-    Name="03ae0ba6-c941-42f3-9acb-6f3170ec47e5"
-    Publisher="CN=mischero"
-    Version="1.0.0.0" />
-
-  <mp:PhoneIdentity PhoneProductId="03ae0ba6-c941-42f3-9acb-6f3170ec47e5" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
-
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3" 
+         xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" IgnorableNamespaces="uap mp uap3">
+  <Identity Name="03ae0ba6-c941-42f3-9acb-6f3170ec47e5" Publisher="CN=mischero" Version="1.0.0.0" />
+  <mp:PhoneIdentity PhoneProductId="03ae0ba6-c941-42f3-9acb-6f3170ec47e5" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
     <DisplayName>InkToolbarTest</DisplayName>
     <PublisherDisplayName>mischero</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
-
   <Dependencies>
     <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.0.0" MaxVersionTested="10.0.0.0" />
   </Dependencies>
-
   <Resources>
-    <Resource Language="x-generate"/>
+    <Resource Language="x-generate" />
   </Resources>
-
   <Applications>
-    <Application Id="App"
-      Executable="$targetnametoken$.exe"
-      EntryPoint="InkToolbarTest.App">
-      <uap:VisualElements
-        DisplayName="InkToolbarTest"
-        Square150x150Logo="Assets\Square150x150Logo.png"
-        Square44x44Logo="Assets\Square44x44Logo.png"
-        Description="InkToolbarTest"
-        BackgroundColor="transparent">
-        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"/>
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="InkToolbarTest.App">
+      <uap:VisualElements DisplayName="InkToolbarTest" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" Description="InkToolbarTest" BackgroundColor="transparent">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png">
+        </uap:DefaultTile>
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
+      <Extensions>
+        <uap:Extension Category="windows.appService">
+          <uap:AppService Name="ShadowEffect.1" />
+        </uap:Extension>
+        <uap3:Extension Category="windows.appExtension">
+          <uap3:AppExtension Name="Journalist.Effect.1" Id="ShadowEffect" PublicFolder="Public" DisplayName="Shadow" Description="Draws a shadow behind each ink stroke.">
+            <uap3:Properties>
+              <Service>ShadowEffect.1</Service>
+              <ExtensionHtml>ShadowEffect.html</ExtensionHtml>
+            </uap3:Properties>
+          </uap3:AppExtension>
+        </uap3:Extension>
+      </Extensions>
     </Application>
   </Applications>
-
   <Capabilities>
     <Capability Name="internetClient" />
   </Capabilities>

@@ -3,10 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
+using Windows.ApplicationModel.AppService;
+using Windows.ApplicationModel.Background;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Storage;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -22,6 +26,8 @@ namespace InkToolbarTest
     /// </summary>
     sealed partial class App : Application
     {
+        private BackgroundTaskDeferral _backgroundTaskDeferral;
+
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
@@ -77,6 +83,100 @@ namespace InkToolbarTest
                 // Ensure the current window is active
                 Window.Current.Activate();
             }
+        }
+
+        protected override void OnBackgroundActivated(BackgroundActivatedEventArgs args)
+        {
+            base.OnBackgroundActivated(args);
+
+            var details = args.TaskInstance.TriggerDetails as AppServiceTriggerDetails;
+
+            if (details == null)
+            {
+                return;
+            }
+            _backgroundTaskDeferral = args.TaskInstance.GetDeferral();
+
+            args.TaskInstance.Canceled += TaskInstance_Canceled;
+
+            details.AppServiceConnection.ServiceClosed += AppServiceConnection_ServiceClosed;
+            details.AppServiceConnection.RequestReceived += AppServiceConnection_RequestReceived;
+        }
+
+        private async void AppServiceConnection_RequestReceived(AppServiceConnection sender, AppServiceRequestReceivedEventArgs args)
+        {
+            var method = args.Request.Message["Method"] as string;
+
+            switch (method)
+            {
+                case "GetEffectCount":
+                    await GetEffectCountAsync(args);
+                    break;
+
+                case "GetEffect":
+                    await GetEffectAsync(args);
+                    break;
+            }
+        }
+
+        private async Task GetEffectAsync(AppServiceRequestReceivedEventArgs args)
+        {
+            var index = (int)args.Request.Message["Index"];
+
+            System.Diagnostics.Debug.Assert(index == 0);
+
+            var deferral = args.GetDeferral();
+
+            var uri = new Uri("ms-appx:///Public/ShadowEffect.xml");
+
+            var file = await StorageFile.GetFileFromApplicationUriAsync(uri);
+
+            var xml = await FileIO.ReadTextAsync(file);
+
+            var message = new ValueSet
+            {
+                ["Name"] = "Shadow",
+                ["Data"] = xml
+            };
+
+            await args.Request.SendResponseAsync(message);
+
+            deferral.Complete();
+        }
+
+        private static async Task GetEffectCountAsync(AppServiceRequestReceivedEventArgs args)
+        {
+            var deferral = args.GetDeferral();
+
+            var message = new ValueSet
+            {
+                ["Count"] = 1
+            };
+            await args.Request.SendResponseAsync(message);
+            deferral.Complete();
+        }
+
+
+        private void AppServiceConnection_ServiceClosed(AppServiceConnection sender, AppServiceClosedEventArgs args)
+        {
+            CompleteDeferral();
+        }
+
+        private void TaskInstance_Canceled(IBackgroundTaskInstance sender, BackgroundTaskCancellationReason reason)
+        {
+            CompleteDeferral();
+        }
+
+        private void CompleteDeferral()
+        {
+            if (_backgroundTaskDeferral == null)
+            {
+                return;
+            }
+
+            _backgroundTaskDeferral.Complete();
+
+            _backgroundTaskDeferral = null;
         }
 
         /// <summary>

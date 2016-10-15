@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -13,11 +14,13 @@ using Windows.Storage;
 using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
 using Windows.UI;
+using Windows.UI.Composition;
 using Windows.UI.Core;
 using Windows.UI.Input.Inking;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
+using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 
 namespace InkToolbarTest
@@ -43,7 +46,10 @@ namespace InkToolbarTest
 
         private Point _lastPoint;
 
+        private int _deferredDryDelay;
+
         private float displayDpi;
+        private IReadOnlyList<InkStroke> _pendingDry;
         #endregion
 
         #region Constructors
@@ -155,6 +161,15 @@ namespace InkToolbarTest
                 eraser.Unchecked += Eraser_Unchecked;
             }
 
+            InkCanvas.InkPresenter.InputProcessingConfiguration.RightDragAction = InkInputRightDragAction.LeaveUnprocessed;
+
+            var unprocessedInput = InkCanvas.InkPresenter.UnprocessedInput;
+            unprocessedInput.PointerPressed += UnprocessedInput_PointerPressed;
+            unprocessedInput.PointerMoved += UnprocessedInput_PointerMoved;
+            unprocessedInput.PointerReleased += UnprocessedInput_PointerReleased;
+            unprocessedInput.PointerExited += UnprocessedInput_PointerExited;
+            unprocessedInput.PointerLost += UnprocessedInput_PointerLost;
+
             _eraseAllFlyout = FlyoutBase.GetAttachedFlyout(eraser) as Flyout;
 
             if (_eraseAllFlyout != null)
@@ -199,26 +214,25 @@ namespace InkToolbarTest
 
         private void Eraser_Checked(object sender, RoutedEventArgs e)
         {
-            var unprocessedInput = InkCanvas.InkPresenter.UnprocessedInput;
-
-            unprocessedInput.PointerPressed += UnprocessedInput_PointerPressed;
-            unprocessedInput.PointerMoved += UnprocessedInput_PointerMoved;
-            unprocessedInput.PointerReleased += UnprocessedInput_PointerReleased;
-            unprocessedInput.PointerExited += UnprocessedInput_PointerExited;
-            unprocessedInput.PointerLost += UnprocessedInput_PointerLost;
+            //var unprocessedInput = InkCanvas.InkPresenter.UnprocessedInput;
+            //unprocessedInput.PointerPressed += UnprocessedInput_PointerPressed;
+            //unprocessedInput.PointerMoved += UnprocessedInput_PointerMoved;
+            //unprocessedInput.PointerReleased += UnprocessedInput_PointerReleased;
+            //unprocessedInput.PointerExited += UnprocessedInput_PointerExited;
+            //unprocessedInput.PointerLost += UnprocessedInput_PointerLost;
 
             InkCanvas.InkPresenter.InputProcessingConfiguration.Mode = InkInputProcessingMode.None;
         }
 
         private void Eraser_Unchecked(object sender, RoutedEventArgs e)
         {
-            var unprocessedInput = InkCanvas.InkPresenter.UnprocessedInput;
+            //var unprocessedInput = InkCanvas.InkPresenter.UnprocessedInput;
 
-            unprocessedInput.PointerPressed -= UnprocessedInput_PointerPressed;
-            unprocessedInput.PointerMoved -= UnprocessedInput_PointerMoved;
-            unprocessedInput.PointerReleased -= UnprocessedInput_PointerReleased;
-            unprocessedInput.PointerExited -= UnprocessedInput_PointerExited;
-            unprocessedInput.PointerLost -= UnprocessedInput_PointerLost;
+            //unprocessedInput.PointerPressed -= UnprocessedInput_PointerPressed;
+            //unprocessedInput.PointerMoved -= UnprocessedInput_PointerMoved;
+            //unprocessedInput.PointerReleased -= UnprocessedInput_PointerReleased;
+            //unprocessedInput.PointerExited -= UnprocessedInput_PointerExited;
+            //unprocessedInput.PointerLost -= UnprocessedInput_PointerLost;
 
             InkCanvas.InkPresenter.InputProcessingConfiguration.Mode = InkInputProcessingMode.Inking;
         }
@@ -300,16 +314,16 @@ namespace InkToolbarTest
 
         private void InkPresenter_StrokesCollected(InkPresenter sender, InkStrokesCollectedEventArgs args)
         {
-            var strokes = _inkSynchronizer.BeginDry();
+            _pendingDry = _inkSynchronizer.BeginDry();
 
             var container = new InkStrokeContainer();
 
-            container.AddStrokes(from item in strokes
-                select item.Clone());
+            foreach (var stroke in _pendingDry)
+            {
+                container.AddStroke(stroke.Clone());
+            }
 
             _strokes.Add(container);
-
-            _inkSynchronizer.EndDry();
 
             DrawingCanvas.Invalidate();
         }
@@ -317,6 +331,32 @@ namespace InkToolbarTest
         private void DrawCanvas(CanvasControl sender, CanvasDrawEventArgs args)
         {
             DrawInk(args.DrawingSession);
+
+            if (_pendingDry != null && _deferredDryDelay == 0)
+            {
+                args.DrawingSession.DrawInk(_pendingDry);
+
+                _deferredDryDelay = 1;
+
+                Windows.UI.Xaml.Media.CompositionTarget.Rendering += DeferEndDry;
+            }
+
+        }
+        private void DeferEndDry(object sender, object e)
+        {
+            Debug.Assert(_pendingDry != null);
+
+            if (_deferredDryDelay > 0)
+            {
+                _deferredDryDelay--;
+            }
+            else
+            {
+                Windows.UI.Xaml.Media.CompositionTarget.Rendering -= DeferEndDry;
+                _pendingDry = null;
+
+                _inkSynchronizer.EndDry();
+            }
         }
 
         private void DrawInk(CanvasDrawingSession session)
@@ -337,7 +377,7 @@ namespace InkToolbarTest
                     using (var shadowEffect = new ShadowEffect
                     {
                         ShadowColor = Colors.DarkRed,
-                        Source = list
+                        Source = list,
                     })
                     {
                         session.DrawImage(shadowEffect, new Vector2(2, 2));

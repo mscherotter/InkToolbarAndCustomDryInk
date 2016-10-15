@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Effect xmlns="http://www.charette.com/journalist/1.0">
+  <DrawShadow Color="DarkGray" Offset="2,2"/>
+  <DrawItem/>
+</Effect>
