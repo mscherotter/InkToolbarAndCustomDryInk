@@ -371,6 +371,8 @@ namespace InkToolbarTest
 
             session.DrawImage(_charm, new Rect( 20, 20, 200, 200));
 
+            //DrawKeyedImage(session);
+
             foreach (var item in _strokes)
             {
                 var strokes = item.GetStrokes();
@@ -394,6 +396,26 @@ namespace InkToolbarTest
 
                 session.DrawInk(strokes);
             }
+        }
+
+        private void DrawKeyedImage(CanvasDrawingSession session)
+        {
+            using (var scale = new ScaleEffect
+            {
+                Scale = new Vector2(0.25f, 0.25f),
+                Source = _charm
+            })
+            {
+                using (var effect = new ChromaKeyEffect
+                {
+                    Color = Colors.White,
+                    Source = scale,
+                })
+                {
+                    session.DrawImage(effect, 20, 20);
+                }
+            }
+
         }
 
         private async void OnShare(object sender, RoutedEventArgs e)

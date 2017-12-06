@@ -12,3 +12,4 @@ for a full explanation.
 - Simultaneous pen and touch with the ScrollViewer control
 - Adapts DPI when zooming so that the rendering isn't pixelated when zoomed in.
 - Printing support 
+- Demonstrated drawing over an image
