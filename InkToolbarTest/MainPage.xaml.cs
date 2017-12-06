@@ -6,10 +6,12 @@ using System.Numerics;
 using System.Threading.Tasks;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Effects;
+using Microsoft.Graphics.Canvas.Printing;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.Graphics.Display;
+using Windows.Graphics.Printing;
 using Windows.Storage;
 using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
@@ -30,6 +32,8 @@ namespace InkToolbarTest
     /// </summary>
     public sealed partial class MainPage : Page
     {
+        CanvasPrintDocument printDocument;
+
         /// <summary>
         /// This is the maximum Bitmap render size for Win2D
         /// </summary>
@@ -330,6 +334,7 @@ namespace InkToolbarTest
 
         private void DrawCanvas(CanvasControl sender, CanvasDrawEventArgs args)
         {
+
             DrawInk(args.DrawingSession);
 
             if (_pendingDry != null && _deferredDryDelay == 0)
@@ -435,5 +440,78 @@ namespace InkToolbarTest
             }
         }
         #endregion
+
+        private async void OnPrint(object sender, RoutedEventArgs e)
+        {
+            if (printDocument != null)
+            {
+                // Dispose any previously created CanvasPrintDocument
+                // (see the CanvasPrintDocument.Dispose documentation for more information).
+                printDocument.Dispose();
+            }
+
+            printDocument = MakePrintDocument();
+
+            var printManager = PrintManager.GetForCurrentView();
+            printManager.PrintTaskRequested += OnPrintTaskRequested;
+            await PrintManager.ShowPrintUIAsync();
+            printManager.PrintTaskRequested -= OnPrintTaskRequested;
+
+        }
+        void OnPrintTaskRequested(PrintManager sender, PrintTaskRequestedEventArgs args)
+        {
+            args.Request.CreatePrintTask("Job Name", (a) =>
+            {
+                a.SetSource(printDocument);
+            });
+        }
+
+        void Page_Unloaded(object sender, RoutedEventArgs args)
+        {
+            if (printDocument != null)
+            {
+                printDocument.Dispose();
+                printDocument = null;
+            }
+
+            DrawingCanvas.RemoveFromVisualTree();
+            DrawingCanvas = null;
+        }
+
+        CanvasPrintDocument MakePrintDocument()
+        {
+            if (printDocument != null)
+            {
+                // Dispose any previously created CanvasPrintDocument
+                // (see the CanvasPrintDocument.Dispose documentation for more information).
+                printDocument.Dispose();
+            }
+
+            printDocument = new CanvasPrintDocument();
+
+            printDocument.Preview += (sender, args) =>
+            {
+                sender.SetPageCount(1);
+                PrintPage(args.DrawingSession, args.PrintTaskOptions.GetPageDescription(1));
+            };
+
+            printDocument.Print += (sender, args) =>
+            {
+                using (var ds = args.CreateDrawingSession())
+                {
+                    PrintPage(ds, args.PrintTaskOptions.GetPageDescription(1));
+                }
+            };
+
+            return printDocument;
+        }
+
+        void PrintPage(CanvasDrawingSession ds, PrintPageDescription desc)
+        {
+            var pageSize = desc.PageSize;
+            var center = pageSize.ToVector2() / 2;
+
+            DrawInk(ds);
+        }
     }
 }
