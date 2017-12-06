@@ -41,7 +41,7 @@
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" x:Name="ContentRoot">
         <ScrollViewer x:Name="ScrollViewer" Style="{StaticResource ZoomableScrollViewer}" ViewChanged="OnScrollViewerViewChanged">
             <Grid Style="{StaticResource CanvasContainerStyle}" x:Name="CanvasContainer">
-                <canvas:CanvasControl Draw="DrawCanvas" ClearColor="Beige" x:Name="DrawingCanvas"/>
+                <canvas:CanvasControl Draw="DrawCanvas" ClearColor="Beige" x:Name="DrawingCanvas" CreateResources="OnCreateResources"/>
                 <InkCanvas x:Name="InkCanvas"/>
             </Grid>
         </ScrollViewer>

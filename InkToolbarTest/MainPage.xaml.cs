@@ -54,6 +54,7 @@ namespace InkToolbarTest
 
         private float displayDpi;
         private IReadOnlyList<InkStroke> _pendingDry;
+        private CanvasBitmap _charm;
         #endregion
 
         #region Constructors
@@ -368,6 +369,8 @@ namespace InkToolbarTest
         {
             session.Clear(DrawingCanvas.ClearColor);
 
+            session.DrawImage(_charm, new Rect( 20, 20, 200, 200));
+
             foreach (var item in _strokes)
             {
                 var strokes = item.GetStrokes();
@@ -512,6 +515,16 @@ namespace InkToolbarTest
             var center = pageSize.ToVector2() / 2;
 
             DrawInk(ds);
+        }
+
+        private void OnCreateResources(CanvasControl sender, Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args)
+        {
+            args.TrackAsyncAction(CreateResourcesAsync(sender).AsAsyncAction());
+        }
+
+        async Task CreateResourcesAsync(CanvasControl sender)
+        {
+            _charm = await CanvasBitmap.LoadAsync(sender, "Assets/CharmSketch_29K.png");
         }
     }
 }
