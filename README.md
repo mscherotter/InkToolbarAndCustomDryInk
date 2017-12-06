@@ -11,3 +11,4 @@ for a full explanation.
 - Rendering Win2D to be used in a Share contract
 - Simultaneous pen and touch with the ScrollViewer control
 - Adapts DPI when zooming so that the rendering isn't pixelated when zoomed in.
+- Printing support 
